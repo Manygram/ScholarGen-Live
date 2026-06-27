@@ -9,28 +9,52 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StatusBar
+  StatusBar,
+  ActivityIndicator
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { AvatarPicker } from '../components/Avatar';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function RegistrationScreen() {
   const navigation = useNavigation();
   const { studentProfile, updateStudentProfile } = useApp();
+  const { register, login } = useAuth();
 
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [avatar, setAvatar] = useState(studentProfile.avatar);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleContinue = () => {
-    updateStudentProfile({
-      ...(name.trim() ? { name: name.trim() } : {}),
-      ...(email.trim() ? { email: email.trim() } : {}),
-      avatar,
-    });
-    navigation.navigate('Learning');
+  const handleContinue = async () => {
+    if (!name.trim() || !email.trim() || password.length < 8) {
+      setError('Enter your name, email and a password of at least 8 characters.');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    try {
+      await register({
+        email: email.trim(),
+        password,
+        full_name: name.trim(),
+        role: 'student',
+        ...(phone.trim() ? { phone_number: phone.trim() } : {}),
+      });
+      // Registration does not start a session, so log in to set the cookie.
+      await login(email.trim(), password);
+      updateStudentProfile({ name: name.trim(), email: email.trim(), avatar });
+      navigation.navigate('Learning');
+    } catch (e) {
+      setError(e?.message || 'Could not create your account. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -58,7 +82,7 @@ export default function RegistrationScreen() {
             </View>
 
             <Text style={styles.titleText}>Create{'\n'}Account</Text>
-            <Text style={styles.subtitleText}>Let's get you started</Text>
+            <Text style={styles.subtitleText}>Let&apos;s get you started</Text>
           </View>
 
           {/* Profile Picture */}
@@ -95,6 +119,8 @@ export default function RegistrationScreen() {
                   placeholder="+234 800 000 0000"
                   placeholderTextColor="#8B9A8B"
                   keyboardType="phone-pad"
+                  value={phone}
+                  onChangeText={setPhone}
                 />
               </View>
             </View>
@@ -112,6 +138,23 @@ export default function RegistrationScreen() {
                   autoCapitalize="none"
                   value={email}
                   onChangeText={setEmail}
+                />
+              </View>
+            </View>
+
+            {/* Password Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Password</Text>
+              <View style={styles.inputContainer}>
+                <Feather name="lock" size={20} color="#34931A" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="At least 8 characters"
+                  placeholderTextColor="#8B9A8B"
+                  secureTextEntry
+                  autoCapitalize="none"
+                  value={password}
+                  onChangeText={setPassword}
                 />
               </View>
             </View>
@@ -147,8 +190,23 @@ export default function RegistrationScreen() {
 
         {/* Fixed Bottom Button */}
         <View style={styles.bottomSection}>
-          <TouchableOpacity style={styles.continueButton} activeOpacity={0.8} onPress={handleContinue}>
-            <Text style={styles.continueButtonText}>Continue</Text>
+          {error ? (
+            <View style={styles.errorBox}>
+              <Feather name="alert-circle" size={16} color="#D34B4B" />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
+          <TouchableOpacity
+            style={[styles.continueButton, loading && styles.buttonDisabled]}
+            activeOpacity={0.8}
+            onPress={handleContinue}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.continueButtonText}>Continue</Text>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -264,8 +322,26 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 34 : 24,
     backgroundColor: '#FFFFFF', // Changed to pure white
   },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FCEAE8',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  errorText: {
+    color: '#D34B4B',
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
   continueButton: {
-    backgroundColor: '#52BE23', 
+    backgroundColor: '#52BE23',
     height: 56,
     borderRadius: 14,
     alignItems: 'center',

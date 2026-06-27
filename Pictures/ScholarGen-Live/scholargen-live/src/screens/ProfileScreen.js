@@ -16,12 +16,19 @@ import { useNavigation } from '@react-navigation/native';
 import BottomNav from '../components/BottomNav'; // <-- Reusable nav
 import { AvatarPicker } from '../components/Avatar';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function StudentProfileScreen() {
   const navigation = useNavigation();
   const { studentProfile, updateStudentProfile } = useApp();
+  const { logout } = useAuth();
   // Example toggle state for a setting
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
+
+  const handleLogout = async () => {
+    await logout();
+    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+  };
 
   // Reusable Settings Row Component
   const SettingsRow = ({ icon, title, showToggle, toggleValue, onToggle, isDestructive, onPress }) => (
@@ -168,11 +175,11 @@ export default function StudentProfileScreen() {
 
             {/* Logout Button */}
             <View style={styles.logoutContainer}>
-              <SettingsRow 
-                icon="log-out" 
-                title="Log Out" 
+              <SettingsRow
+                icon="log-out"
+                title="Log Out"
                 isDestructive={true}
-                onPress={() => navigation.navigate('Login')} // Redirects to login
+                onPress={handleLogout}
               />
             </View>
 

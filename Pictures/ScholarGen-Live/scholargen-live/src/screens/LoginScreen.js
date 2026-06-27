@@ -9,14 +9,40 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StatusBar
+  StatusBar,
+  ActivityIndicator
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../context/AuthContext';
 
 export default function LoginScreen() {
-  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const navigation = useNavigation();
+  const { login } = useAuth();
+
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleLogin = async () => {
+    if (!email.trim() || !password) {
+      setError('Please enter your email and password.');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    try {
+      const user = await login(email.trim(), password);
+      const dest = user?.role === 'tutor' ? 'TutorDashboard' : 'Dashboard';
+      navigation.reset({ index: 0, routes: [{ name: dest }] });
+    } catch (e) {
+      setError(e?.message || 'Unable to log in. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -52,6 +78,8 @@ export default function LoginScreen() {
                   placeholderTextColor="#8B9A8B"
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  value={email}
+                  onChangeText={setEmail}
                 />
               </View>
             </View>
@@ -67,6 +95,8 @@ export default function LoginScreen() {
                   placeholderTextColor="#8B9A8B"
                   secureTextEntry={!isPasswordVisible}
                   autoCapitalize="none"
+                  value={password}
+                  onChangeText={setPassword}
                 />
                 <TouchableOpacity 
                   onPress={() => setIsPasswordVisible(!isPasswordVisible)}
@@ -86,22 +116,34 @@ export default function LoginScreen() {
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
 
+            {error ? (
+              <View style={styles.errorBox}>
+                <Feather name="alert-circle" size={16} color="#D34B4B" />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
+
           </View>
         </ScrollView>
 
         {/* Fixed Bottom Button & Redirect */}
         <View style={styles.bottomSection}>
-          <TouchableOpacity 
-            style={styles.continueButton} 
+          <TouchableOpacity
+            style={[styles.continueButton, loading && styles.buttonDisabled]}
             activeOpacity={0.8}
-            onPress={() => navigation.navigate('Dashboard')}
+            onPress={handleLogin}
+            disabled={loading}
           >
-            <Text style={styles.continueButtonText}>Login</Text>
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.continueButtonText}>Login</Text>
+            )}
           </TouchableOpacity>
           
           {/* Sign Up Redirect */}
           <View style={styles.signupRedirect}>
-            <Text style={styles.redirectText}>Don't have an account? </Text>
+            <Text style={styles.redirectText}>Don&apos;t have an account? </Text>
             <TouchableOpacity 
               activeOpacity={0.7}
               onPress={() => navigation.navigate('Registration')}
@@ -188,6 +230,24 @@ const styles = StyleSheet.create({
     color: '#34931A',
     fontSize: 13, // Moderated size
     fontWeight: '700',
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FCEAE8',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+  },
+  errorText: {
+    color: '#D34B4B',
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   bottomSection: {
     paddingHorizontal: 24,

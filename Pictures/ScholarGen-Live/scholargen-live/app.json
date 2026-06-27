@@ -45,6 +45,7 @@
       "reactCompiler": true
     },
     "extra": {
+      "apiBaseUrl": "https://liveapi.scholargens.com/api.v1",
       "router": {},
       "eas": {
         "projectId": "b37a6dd6-c8cf-479d-8608-c8a6929a5207"

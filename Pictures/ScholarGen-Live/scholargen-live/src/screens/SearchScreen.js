@@ -15,6 +15,16 @@ import { useNavigation } from '@react-navigation/native';
 import BottomNav from '../components/BottomNav'; // <-- Reusable nav
 import Avatar from '../components/Avatar';
 import { useApp } from '../context/AppContext';
+import { useApiData } from '../hooks/useApiData';
+import api from '../services/api';
+import { mapApiTutor } from '../services/transform';
+
+// Shown until the API returns approved tutors.
+const FALLBACK_TRENDING = [
+  { id: '1', name: 'Aisha O.', subject: 'Chemistry', rating: '4.9' },
+  { id: '2', name: 'David O.', subject: 'English', rating: '4.8' },
+  { id: '3', name: 'Samuel O.', subject: 'Economics', rating: '5.0' },
+];
 
 // Students & parents can find tutors across five admin-controlled dimensions.
 const DIMENSIONS = [
@@ -40,11 +50,11 @@ export default function SearchScreen() {
     'Public Speaking',
   ];
 
-  const trendingTutors = [
-    { id: '1', initials: 'AO', name: 'Aisha O.', subject: 'Chemistry', bgColor: '#FFEBEE', textColor: '#C62828', rating: '4.9' },
-    { id: '2', initials: 'DO', name: 'David O.', subject: 'English', bgColor: '#E3F2FD', textColor: '#1565C0', rating: '4.8' },
-    { id: '3', initials: 'SO', name: 'Samuel O.', subject: 'Economics', bgColor: '#E0F2F1', textColor: '#00695C', rating: '5.0' },
-  ];
+  const { data: apiTutors } = useApiData(() => api.tutors.list(), []);
+  const trendingTutors =
+    Array.isArray(apiTutors) && apiTutors.length > 0
+      ? apiTutors.slice(0, 8).map(mapApiTutor)
+      : FALLBACK_TRENDING;
 
   // Build the list of options for the active dimension. Education levels are
   // grouped (Primary School, Senior Secondary, …); the rest are flat.
@@ -234,6 +244,7 @@ export default function SearchScreen() {
                       tutorName: tutor.name,
                       tutorInitials: tutor.initials,
                       tutorSubject: tutor.subject,
+                      tutorAvatar: tutor.avatar,
                     })
                   }
                 >
@@ -243,13 +254,13 @@ export default function SearchScreen() {
                       name={tutor.name}
                       initials={tutor.initials}
                       size={48}
-                      bg={tutor.bgColor}
-                      fg={tutor.textColor}
                     />
-                    <View style={styles.ratingPill}>
-                      <Ionicons name="star" size={12} color="#F3C353" />
-                      <Text style={styles.ratingText}>{tutor.rating}</Text>
-                    </View>
+                    {tutor.rating ? (
+                      <View style={styles.ratingPill}>
+                        <Ionicons name="star" size={12} color="#F3C353" />
+                        <Text style={styles.ratingText}>{tutor.rating}</Text>
+                      </View>
+                    ) : null}
                   </View>
                   <Text style={styles.tutorName} numberOfLines={1}>{tutor.name}</Text>
                   <Text style={styles.tutorSubject} numberOfLines={1}>{tutor.subject}</Text>

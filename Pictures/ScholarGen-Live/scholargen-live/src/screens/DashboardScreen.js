@@ -16,6 +16,19 @@ import BottomNav from '../components/BottomNav'; // <-- Import the reusable comp
 import PromoBanner from '../components/PromoBanner';
 import Avatar from '../components/Avatar';
 import { useApp } from '../context/AppContext';
+import { useApiData } from '../hooks/useApiData';
+import api from '../services/api';
+import { mapApiTutor } from '../services/transform';
+
+// Fallback tutors shown until the API has approved tutors to return.
+const FALLBACK_TUTORS = [
+  { id: '1', name: 'Dr. Funke Adeyemi', subject: 'Physics' },
+  { id: '2', name: 'Kelechi E.', subject: 'Mathematics' },
+  { id: '3', name: 'Aisha O.', subject: 'Chemistry' },
+  { id: '4', name: 'David O.', subject: 'English' },
+  { id: '5', name: 'Binta J.', subject: 'Biology' },
+  { id: '6', name: 'Samuel O.', subject: 'Economics' },
+];
 
 export default function DashboardScreen() {
   const navigation = useNavigation();
@@ -26,15 +39,12 @@ export default function DashboardScreen() {
   // platform spans academics AND skills/professional development.
   const exploreCategories = categories.filter((c) => c.enabled).slice(0, 8);
 
-  // Mock data for the recommended tutors
-  const recommendedTutors = [
-    { id: '1', initials: 'FA', name: 'Dr. Funke Adeyemi', subject: 'Physics', bgColor: '#E8F5E9', textColor: '#2E7D32' },
-    { id: '2', initials: 'KE', name: 'Kelechi E.', subject: 'Mathematics', bgColor: '#FFF3E0', textColor: '#E65100' },
-    { id: '3', initials: 'AO', name: 'Aisha O.', subject: 'Chemistry', bgColor: '#FFEBEE', textColor: '#C62828' },
-    { id: '4', initials: 'DO', name: 'David O.', subject: 'English', bgColor: '#E3F2FD', textColor: '#1565C0' },
-    { id: '5', initials: 'BJ', name: 'Binta J.', subject: 'Biology', bgColor: '#F3E5F5', textColor: '#6A1B9A' },
-    { id: '6', initials: 'SO', name: 'Samuel O.', subject: 'Economics', bgColor: '#E0F2F1', textColor: '#00695C' },
-  ];
+  // Live recommended tutors from the public discovery endpoint, with fallback.
+  const { data: apiTutors } = useApiData(() => api.tutors.list(), []);
+  const recommendedTutors =
+    Array.isArray(apiTutors) && apiTutors.length > 0
+      ? apiTutors.slice(0, 6).map(mapApiTutor)
+      : FALLBACK_TUTORS;
 
   return (
     <>
@@ -180,18 +190,21 @@ export default function DashboardScreen() {
                   activeOpacity={0.7}
                   onPress={() => {
                     // Navigate and pass the tutor data as route params!
-                    navigation.navigate('TutorProfile', { 
+                    navigation.navigate('TutorProfile', {
                       tutorName: tutor.name,
                       tutorInitials: tutor.initials,
-                      tutorSubject: tutor.subject 
+                      tutorSubject: tutor.subject,
+                      tutorAvatar: tutor.avatar,
                     });
                   }}
                 >
-                  <View style={[styles.tutorAvatar, { backgroundColor: tutor.bgColor }]}>
-                    <Text style={[styles.tutorInitials, { color: tutor.textColor }]}>
-                      {tutor.initials}
-                    </Text>
-                  </View>
+                  <Avatar
+                    uri={tutor.avatar}
+                    name={tutor.name}
+                    initials={tutor.initials}
+                    size={48}
+                    style={styles.tutorAvatar}
+                  />
                   <Text style={styles.tutorName} numberOfLines={1}>{tutor.name}</Text>
                   <Text style={styles.tutorSubject} numberOfLines={1}>{tutor.subject}</Text>
                 </TouchableOpacity>

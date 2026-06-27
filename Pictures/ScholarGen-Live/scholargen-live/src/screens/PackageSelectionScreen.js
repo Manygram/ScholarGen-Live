@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -13,18 +13,34 @@ import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import BottomNav from '../components/BottomNav'; // <-- Using your reusable component
 import { useApp } from '../context/AppContext';
+import { useApiData } from '../hooks/useApiData';
+import api from '../services/api';
+import { mapApiPackage } from '../services/transform';
 import { formatNaira } from '../theme';
 
 export default function PackageSelectionScreen() {
   const navigation = useNavigation();
   const { packages, familyPackages } = useApp();
 
-  // Pricing is fully admin-controlled — tutors never set prices.
-  const plans = packages.filter((p) => p.enabled);
+  // Pricing is fully admin-controlled — tutors never set prices. We pull live
+  // packages from the API and fall back to the local catalog if none exist yet.
+  const { data: apiPackages } = useApiData(() => api.packages.list(), []);
+  const plans = useMemo(() => {
+    if (Array.isArray(apiPackages) && apiPackages.length > 0) {
+      return apiPackages.map(mapApiPackage);
+    }
+    return packages.filter((p) => p.enabled);
+  }, [apiPackages, packages]);
+
   const familyPlans = familyPackages.filter((p) => p.enabled);
-  const [selectedPlan, setSelectedPlan] = useState(
-    plans.find((p) => p.popular)?.id || plans[0]?.id,
-  );
+  const [selectedPlan, setSelectedPlan] = useState(null);
+
+  // Keep a valid default selection as the plan source resolves.
+  useEffect(() => {
+    if (plans.length && !plans.find((p) => p.id === selectedPlan)) {
+      setSelectedPlan(plans.find((p) => p.popular)?.id || plans[0].id);
+    }
+  }, [plans, selectedPlan]);
 
   // First plan reads as the light "entry" card, the popular plan as the rich
   // green card, and any others as the deep premium card.
