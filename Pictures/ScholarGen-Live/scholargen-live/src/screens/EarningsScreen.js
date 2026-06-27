@@ -12,9 +12,12 @@ import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import ScreenHeader from '../components/ScreenHeader';
 import TutorBottomNav from '../components/TutorBottomNav';
+import { useApiData } from '../hooks/useApiData';
+import api from '../services/api';
+import { mapApiTransaction } from '../services/transform';
 import { colors, formatNaira } from '../theme';
 
-const TRANSACTIONS = [
+const FALLBACK_TRANSACTIONS = [
   { id: '1', type: 'session', title: 'Session · Chidinma K.', date: 'Jun 24', amount: 12000, status: 'cleared' },
   { id: '2', type: 'session', title: 'Session · Emeka M.', date: 'Jun 24', amount: 10000, status: 'cleared' },
   { id: '3', type: 'payout', title: 'Withdrawal to GTBank', date: 'Jun 20', amount: -150000, status: 'paid' },
@@ -29,6 +32,17 @@ function iconFor(type) {
 }
 
 export default function EarningsScreen() {
+  // Live earnings for the signed-in tutor, with a graceful fallback.
+  const { data: earnings } = useApiData(() => api.tutors.myEarnings(), []);
+
+  const available = earnings?.wallet_balance ?? 489600;
+  const lifetime = earnings?.total_earnings ?? 3200000;
+  const commissionRate = earnings?.commission_rate;
+  const transactions =
+    Array.isArray(earnings?.transactions) && earnings.transactions.length > 0
+      ? earnings.transactions.map(mapApiTransaction)
+      : FALLBACK_TRANSACTIONS;
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -43,19 +57,21 @@ export default function EarningsScreen() {
           style={styles.balanceCard}
         >
           <Text style={styles.balanceLabel}>AVAILABLE BALANCE</Text>
-          <Text style={styles.balanceAmount}>{formatNaira(489600)}</Text>
+          <Text style={styles.balanceAmount}>{formatNaira(available)}</Text>
           <View style={styles.balanceRow}>
             <View style={styles.balanceStat}>
-              <Text style={styles.balanceStatLabel}>This month</Text>
-              <Text style={styles.balanceStatValue}>{formatNaira(576000, { compact: true })}</Text>
-            </View>
-            <View style={styles.balanceStat}>
-              <Text style={styles.balanceStatLabel}>Pending</Text>
-              <Text style={styles.balanceStatValue}>{formatNaira(34000, { compact: true })}</Text>
-            </View>
-            <View style={styles.balanceStat}>
               <Text style={styles.balanceStatLabel}>Lifetime</Text>
-              <Text style={styles.balanceStatValue}>{formatNaira(3200000, { compact: true })}</Text>
+              <Text style={styles.balanceStatValue}>{formatNaira(lifetime, { compact: true })}</Text>
+            </View>
+            <View style={styles.balanceStat}>
+              <Text style={styles.balanceStatLabel}>Commission</Text>
+              <Text style={styles.balanceStatValue}>
+                {commissionRate != null ? `${commissionRate}%` : '15%'}
+              </Text>
+            </View>
+            <View style={styles.balanceStat}>
+              <Text style={styles.balanceStatLabel}>Activity</Text>
+              <Text style={styles.balanceStatValue}>{transactions.length}</Text>
             </View>
           </View>
           <TouchableOpacity style={styles.withdrawBtn} activeOpacity={0.85}>
@@ -85,9 +101,9 @@ export default function EarningsScreen() {
         </View>
 
         <View style={styles.txnList}>
-          {TRANSACTIONS.map((t, idx) => {
+          {transactions.map((t, idx) => {
             const ic = iconFor(t.type);
-            const isLast = idx === TRANSACTIONS.length - 1;
+            const isLast = idx === transactions.length - 1;
             const negative = t.amount < 0;
             return (
               <View key={t.id} style={[styles.txnRow, !isLast && styles.txnDivider]}>

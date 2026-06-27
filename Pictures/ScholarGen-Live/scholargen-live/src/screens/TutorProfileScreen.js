@@ -24,6 +24,7 @@ export default function TutorProfileScreen() {
   const tutorInitials = route.params?.tutorInitials || 'FA';
   const tutorSubject = route.params?.tutorSubject || 'Mathematics & Physics';
   const tutorAvatar = route.params?.tutorAvatar || null;
+  const tutorId = route.params?.tutorId || null;
 
   // Mock Reviews Data
   const reviews = [
@@ -204,7 +205,7 @@ export default function TutorProfileScreen() {
             <TouchableOpacity 
               style={styles.bookButton} 
               activeOpacity={0.8}
-              onPress={() => navigation.navigate('PackageSelection')}
+              onPress={() => navigation.navigate('PackageSelection', { tutorId, tutorName })}
             >
               <Text style={styles.bookButtonText}>Book This Tutor →</Text>
             </TouchableOpacity>

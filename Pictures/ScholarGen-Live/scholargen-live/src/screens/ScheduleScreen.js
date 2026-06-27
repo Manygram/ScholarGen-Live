@@ -9,13 +9,30 @@ import {
   StatusBar,
   Platform
 } from 'react-native';
-import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import BottomNav from '../components/BottomNav'; // <-- Our sleek reusable nav
+import { useApiData } from '../hooks/useApiData';
+import api from '../services/api';
+import { mapApiSession } from '../services/transform';
+
+// Shown until the API has sessions for this student.
+const FALLBACK_SCHEDULE = [
+  { id: '1', subject: 'Physics', tutor: 'Dr. Funke Adeyemi', time: '10:00 AM - 12:00 PM', type: 'Group Class', status: 'Completed' },
+  { id: '2', subject: 'Mathematics', tutor: 'Kelechi E.', time: '2:00 PM - 4:00 PM', type: '1-on-1 Mentorship', status: 'Live' },
+  { id: '3', subject: 'English', tutor: 'David O.', time: '5:30 PM - 7:00 PM', type: 'Group Class', status: 'Upcoming' },
+];
 
 export default function ScheduleScreen() {
   const [activeDate, setActiveDate] = useState('17');
   const [activeFilter, setActiveFilter] = useState('All');
+
+  // Live sessions for the signed-in student, with a graceful fallback.
+  const { data: apiSessions } = useApiData(() => api.students.sessions(), []);
+  const scheduleData =
+    Array.isArray(apiSessions) && apiSessions.length > 0
+      ? apiSessions.map(mapApiSession)
+      : FALLBACK_SCHEDULE;
 
   // Creative element: Horizontal date strip for quick week navigation
   const weekDates = [
@@ -28,34 +45,6 @@ export default function ScheduleScreen() {
   ];
 
   const filters = ['All', 'Physics', 'Mathematics', 'English'];
-
-  // Mock timeline data
-  const scheduleData = [
-    {
-      id: '1',
-      subject: 'Physics',
-      tutor: 'Dr. Funke Adeyemi',
-      time: '10:00 AM - 12:00 PM',
-      type: 'Group Class',
-      status: 'Completed',
-    },
-    {
-      id: '2',
-      subject: 'Mathematics',
-      tutor: 'Kelechi E.',
-      time: '2:00 PM - 4:00 PM',
-      type: '1-on-1 Mentorship',
-      status: 'Live', // Currently active class
-    },
-    {
-      id: '3',
-      subject: 'English',
-      tutor: 'David O.',
-      time: '5:30 PM - 7:00 PM',
-      type: 'Group Class',
-      status: 'Upcoming',
-    }
-  ];
 
   return (
     <>

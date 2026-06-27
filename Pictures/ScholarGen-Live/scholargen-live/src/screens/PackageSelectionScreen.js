@@ -7,10 +7,13 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
-  Platform
+  Platform,
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import * as WebBrowser from 'expo-web-browser';
 import BottomNav from '../components/BottomNav'; // <-- Using your reusable component
 import { useApp } from '../context/AppContext';
 import { useApiData } from '../hooks/useApiData';
@@ -20,7 +23,10 @@ import { formatNaira } from '../theme';
 
 export default function PackageSelectionScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
+  const tutorId = route.params?.tutorId || null;
   const { packages, familyPackages } = useApp();
+  const [booking, setBooking] = useState(false);
 
   // Pricing is fully admin-controlled — tutors never set prices. We pull live
   // packages from the API and fall back to the local catalog if none exist yet.
@@ -41,6 +47,47 @@ export default function PackageSelectionScreen() {
       setSelectedPlan(plans.find((p) => p.popular)?.id || plans[0].id);
     }
   }, [plans, selectedPlan]);
+
+  // Booking flow: create a booking (which initializes payment), open the
+  // gateway checkout, then verify the payment on return.
+  const handleBook = async () => {
+    if (!selectedPlan) return;
+    setBooking(true);
+    try {
+      const res = await api.bookings.create({
+        tutor_id: tutorId,
+        package_id: selectedPlan,
+        currency: 'NGN',
+        preferred_schedule: [],
+      });
+
+      const url = res?.authorization_url;
+      const reference = res?.payment?.reference;
+      const gateway = res?.gateway || 'paystack';
+
+      if (url) {
+        await WebBrowser.openBrowserAsync(url);
+        // Confirm the charge once the user returns from checkout.
+        try {
+          const verification = await api.payments.verify(gateway, reference);
+          if (verification?.status === 'completed') {
+            Alert.alert('Payment confirmed', 'Your booking is confirmed. See you in class!');
+            navigation.navigate('Schedule');
+            return;
+          }
+        } catch {
+          // Verification not ready yet — the gateway webhook will finalize it.
+        }
+        Alert.alert('Payment pending', 'We will confirm your booking once payment is processed.');
+      } else {
+        Alert.alert('Booking initialized', 'Awaiting payment confirmation.');
+      }
+    } catch (e) {
+      Alert.alert('Could not start booking', e?.message || 'Please try again.');
+    } finally {
+      setBooking(false);
+    }
+  };
 
   // First plan reads as the light "entry" card, the popular plan as the rich
   // green card, and any others as the deep premium card.
@@ -159,8 +206,17 @@ export default function PackageSelectionScreen() {
             )}
 
             {/* Clean Continue Button */}
-            <TouchableOpacity style={styles.continueButton} activeOpacity={0.8}>
-              <Text style={styles.continueButtonText}>Continue</Text>
+            <TouchableOpacity
+              style={[styles.continueButton, booking && styles.buttonDisabled]}
+              activeOpacity={0.8}
+              onPress={handleBook}
+              disabled={booking}
+            >
+              {booking ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.continueButtonText}>Continue to Payment</Text>
+              )}
             </TouchableOpacity>
           </ScrollView>
 
@@ -361,6 +417,9 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     alignItems: 'center',
     marginTop: 8,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   continueButtonText: {
     color: '#FFFFFF',

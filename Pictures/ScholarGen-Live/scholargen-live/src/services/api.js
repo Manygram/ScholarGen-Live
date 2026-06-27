@@ -5,7 +5,7 @@
 // (see apiClient) or throw an ApiError.
 import { apiGet, apiPost, apiPut } from './apiClient';
 
-export const auth = {
+const auth = {
   register: (payload) => apiPost('/auth/register', payload),
   login: (payload) => apiPost('/auth/login', payload),
   logout: () => apiPost('/auth/logout'),
@@ -13,13 +13,13 @@ export const auth = {
   oauthCallback: (provider, code) => apiGet(`/auth/oauth/${provider}/callback`, { query: { code } }),
 };
 
-export const users = {
+const users = {
   me: () => apiGet('/users/me'),
   updateProfile: (payload) => apiPut('/users/me', payload),
   oauthIntegrations: () => apiGet('/users/me/oauth-integrations'),
 };
 
-export const students = {
+const students = {
   profile: () => apiGet('/students/profile'),
   updateProfile: (payload) => apiPut('/students/profile', payload),
   createLearningProfile: (payload) => apiPost('/students/learning-profile', payload),
@@ -32,7 +32,7 @@ export const students = {
   byId: (studentId) => apiGet(`/students/${studentId}`),
 };
 
-export const tutors = {
+const tutors = {
   list: (query) => apiGet('/tutors/list', { query }),
   profile: () => apiGet('/tutors/profile'),
   updateProfile: (payload) => apiPut('/tutors/profile', payload),
@@ -50,18 +50,18 @@ export const tutors = {
   assessmentHistory: () => apiGet('/tutors/assessment/history'),
 };
 
-export const packages = {
+const packages = {
   list: (query) => apiGet('/packages', { query }),
   byId: (packageId) => apiGet(`/packages/${packageId}`),
 };
 
-export const bookings = {
+const bookings = {
   findTutors: (query) => apiGet('/bookings/tutors', { query }),
   tutorSlots: (tutorId) => apiGet(`/bookings/tutors/${tutorId}/slots`),
   create: (payload) => apiPost('/bookings/create', payload),
 };
 
-export const sessions = {
+const sessions = {
   byId: (sessionId) => apiGet(`/sessions/${sessionId}`),
   cancel: (sessionId, reason) => apiPost(`/sessions/${sessionId}/cancel`, { reason }),
   reschedule: (sessionId, newStartTime) =>
@@ -71,13 +71,13 @@ export const sessions = {
   submitProgressReport: (payload) => apiPost('/sessions/progress-report', payload),
 };
 
-export const payments = {
+const payments = {
   initialize: (payload) => apiPost('/payments/initialize', payload),
   verify: (gateway, reference) => apiGet('/payments/verify', { query: { gateway, reference } }),
   history: () => apiGet('/payments/history'),
 };
 
-export const admin = {
+const admin = {
   dashboard: () => apiGet('/admin/dashboard'),
   verificationQueue: () => apiGet('/admin/verification-queue'),
   approveTutor: (tutorId) => apiPost(`/admin/tutors/${tutorId}/approve`),

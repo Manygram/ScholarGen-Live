@@ -1,8 +1,9 @@
 // src/navigation/AppNavigator.js
 // 1. We must import useState and useEffect from React
-import React, { useState, useEffect } from 'react'; 
+import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useAuth } from '../context/AuthContext';
 
 // -- STUDENT SCREENS --
 import SplashScreen from '../screens/SplashScreen';
@@ -34,32 +35,35 @@ import AdminDashboardScreen from '../screens/AdminDashboardScreen';
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
-  // 2. THE MEMORY: Create a state to track if the splash is showing
-  const [showSplash, setShowSplash] = useState(true);
+  // 2. THE MEMORY: keep the splash up for a minimum, branded moment…
+  const [minSplashDone, setMinSplashDone] = useState(false);
+  // …and wait for the session to be restored from the httpOnly cookie.
+  const { bootstrapping, isAuthenticated, role } = useAuth();
 
-  // 3. THE TIMER: Run this exact code the second the app opens
+  // 3. THE TIMER: short branded splash window.
   useEffect(() => {
-    // Start a 5000 millisecond (5 second) countdown
-    const timer = setTimeout(() => {
-      setShowSplash(false); // Turn the splash screen off!
-    }, 5000);
-
-    // This is a safety cleanup to stop the timer if the app closes early
+    const timer = setTimeout(() => setMinSplashDone(true), 2500);
     return () => clearTimeout(timer);
   }, []);
 
-  // 4. THE GATEKEEPER: If the timer is still running, ONLY show the Splash screen.
-  // Notice this completely ignores the NavigationContainer!
-  if (showSplash) {
+  // 4. THE GATEKEEPER: stay on the splash until both the timer and the session
+  // bootstrap have completed.
+  if (!minSplashDone || bootstrapping) {
     return <SplashScreen />;
   }
 
-  // 5. THE MAIN APP: Once showSplash becomes false, the app moves past the if-statement
-  // and renders your actual navigation stack.
+  // 5. THE MAIN APP: send signed-in users straight to their dashboard (by role);
+  // everyone else starts at Onboarding.
+  const initialRouteName = isAuthenticated
+    ? role === 'tutor'
+      ? 'TutorDashboard'
+      : 'Dashboard'
+    : 'Onboarding';
+
   return (
     <NavigationContainer>
       {/* Added headerShown: false to prevent default top bars from ruining your custom UI */}
-      <Stack.Navigator initialRouteName="Onboarding" screenOptions={{ headerShown: false }}>
+      <Stack.Navigator initialRouteName={initialRouteName} screenOptions={{ headerShown: false }}>
         
         {/* === STUDENT FLOW === */}
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />

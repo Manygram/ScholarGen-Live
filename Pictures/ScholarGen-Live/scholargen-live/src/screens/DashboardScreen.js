@@ -191,6 +191,7 @@ export default function DashboardScreen() {
                   onPress={() => {
                     // Navigate and pass the tutor data as route params!
                     navigation.navigate('TutorProfile', {
+                      tutorId: tutor.id,
                       tutorName: tutor.name,
                       tutorInitials: tutor.initials,
                       tutorSubject: tutor.subject,

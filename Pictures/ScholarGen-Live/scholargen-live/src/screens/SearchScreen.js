@@ -241,6 +241,7 @@ export default function SearchScreen() {
                   activeOpacity={0.8}
                   onPress={() =>
                     navigation.navigate('TutorProfile', {
+                      tutorId: tutor.id,
                       tutorName: tutor.name,
                       tutorInitials: tutor.initials,
                       tutorSubject: tutor.subject,

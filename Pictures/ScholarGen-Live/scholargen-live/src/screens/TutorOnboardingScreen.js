@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme';
 import { AvatarPicker } from '../components/Avatar';
 import { useApp } from '../context/AppContext';
+import api from '../services/api';
 
 const STEPS = [
   { key: 'profile', title: 'Personal Info', subtitle: 'Your photo, subjects & areas you teach' },
@@ -38,6 +40,7 @@ export default function TutorOnboardingScreen() {
   const [avatar, setAvatar] = useState(tutorProfile.avatar);
   const [subjects, setSubjects] = useState(['Mathematics']);
   const [teachCategories, setTeachCategories] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
 
   const toggleSubject = (s) =>
     setSubjects((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
@@ -47,16 +50,28 @@ export default function TutorOnboardingScreen() {
   const isLast = step === STEPS.length - 1;
   const progress = ((step + 1) / STEPS.length) * 100;
 
-  const next = () => {
-    if (isLast) {
-      updateTutorProfile({
-        ...(name.trim() ? { name: name.trim() } : {}),
-        avatar,
-      });
-      navigation.navigate('TutorDashboard');
-    } else {
+  const next = async () => {
+    if (!isLast) {
       setStep((s) => Math.min(STEPS.length - 1, s + 1));
+      return;
     }
+    // Final step → persist the tutor profile to the API. Best-effort: in the
+    // demo flow a live tutor session may not exist, so we still continue.
+    setSubmitting(true);
+    try {
+      await api.tutors.updateProfile({
+        ...(name.trim() ? { full_name: name.trim() } : {}),
+        subjects,
+      });
+    } catch {
+      // Swallow — onboarding can proceed; submission is retried from the dashboard.
+    }
+    updateTutorProfile({
+      ...(name.trim() ? { name: name.trim() } : {}),
+      avatar,
+    });
+    setSubmitting(false);
+    navigation.navigate('TutorDashboard');
   };
   const back = () => {
     if (step === 0) navigation.goBack();
@@ -285,11 +300,22 @@ export default function TutorOnboardingScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.nextBtn} activeOpacity={0.85} onPress={next}>
-          <Text style={styles.nextBtnText}>
-            {isLast ? 'Submit Application' : 'Continue'}
-          </Text>
-          <Feather name={isLast ? 'send' : 'arrow-right'} size={18} color={colors.inkOnDark} />
+        <TouchableOpacity
+          style={[styles.nextBtn, submitting && styles.nextBtnDisabled]}
+          activeOpacity={0.85}
+          onPress={next}
+          disabled={submitting}
+        >
+          {submitting ? (
+            <ActivityIndicator color={colors.inkOnDark} />
+          ) : (
+            <>
+              <Text style={styles.nextBtnText}>
+                {isLast ? 'Submit Application' : 'Continue'}
+              </Text>
+              <Feather name={isLast ? 'send' : 'arrow-right'} size={18} color={colors.inkOnDark} />
+            </>
+          )}
         </TouchableOpacity>
       </View>
     </View>
@@ -568,4 +594,5 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   nextBtnText: { color: colors.inkOnDark, fontSize: 15, fontWeight: '800' },
+  nextBtnDisabled: { opacity: 0.7 },
 });
