@@ -13,9 +13,18 @@ import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import BottomNav from '../components/BottomNav'; // <-- Import the reusable component
+import PromoBanner from '../components/PromoBanner';
+import Avatar from '../components/Avatar';
+import { useApp } from '../context/AppContext';
 
 export default function DashboardScreen() {
   const navigation = useNavigation();
+  const { studentProfile, categories } = useApp();
+  const firstName = (studentProfile.name || 'there').split(' ')[0];
+
+  // Surface a handful of enabled learning categories so students can see the
+  // platform spans academics AND skills/professional development.
+  const exploreCategories = categories.filter((c) => c.enabled).slice(0, 8);
 
   // Mock data for the recommended tutors
   const recommendedTutors = [
@@ -46,10 +55,23 @@ export default function DashboardScreen() {
           >
             {/* Header Info */}
             <View style={styles.headerRow}>
-              <View>
-                <Text style={styles.greetingText}>Good morning,</Text>
-                <Text style={styles.nameText}>Chidinma 👋</Text>
-              </View>
+              <TouchableOpacity
+                style={styles.headerProfile}
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate('Profile')}
+              >
+                <Avatar
+                  uri={studentProfile.avatar}
+                  name={studentProfile.name}
+                  size={46}
+                  borderColor="rgba(255,255,255,0.15)"
+                  borderWidth={2}
+                />
+                <View style={styles.headerGreeting}>
+                  <Text style={styles.greetingText}>Good morning,</Text>
+                  <Text style={styles.nameText}>{firstName} 👋</Text>
+                </View>
+              </TouchableOpacity>
               <TouchableOpacity style={styles.bellButton} activeOpacity={0.7}>
                 <View style={styles.notificationDot} />
                 <Feather name="bell" size={18} color="#FFFFFF" />
@@ -75,7 +97,37 @@ export default function DashboardScreen() {
 
           {/* Bottom Content Section */}
           <View style={styles.bottomContentSection}>
-            
+
+            {/* Rotating promotional banners (admin-controlled) */}
+            <PromoBanner />
+
+            {/* Explore Learning Categories */}
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionHeader}>Explore Learning</Text>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('Search')}>
+                <Text style={styles.seeAllText}>See all</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.categoryStrip}
+            >
+              {exploreCategories.map((cat) => (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={styles.categoryChip}
+                  activeOpacity={0.8}
+                  onPress={() => navigation.navigate('Search')}
+                >
+                  <View style={styles.categoryChipIcon}>
+                    <Ionicons name={cat.icon || 'school'} size={18} color="#34931A" />
+                  </View>
+                  <Text style={styles.categoryChipText} numberOfLines={1}>{cat.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
             {/* Next Class Card */}
             <View style={styles.primaryCard}>
               <View style={styles.cardTopRow}>
@@ -179,6 +231,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 32,
+  },
+  headerProfile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  headerGreeting: {
+    marginLeft: 12,
   },
   greetingText: {
     color: '#AABBA0',
@@ -368,6 +428,36 @@ const styles = StyleSheet.create({
     color: '#34931A',
     fontSize: 13,
     fontWeight: '600',
+  },
+  categoryStrip: {
+    gap: 12,
+    paddingRight: 24,
+    paddingBottom: 24,
+  },
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: '#F0F4F0',
+    gap: 10,
+  },
+  categoryChipIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#F5F9F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryChipText: {
+    color: '#1A1A1A',
+    fontSize: 13,
+    fontWeight: '700',
+    maxWidth: 150,
   },
   tutorGrid: {
     flexDirection: 'row',

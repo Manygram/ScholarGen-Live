@@ -14,9 +14,12 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import BottomNav from '../components/BottomNav'; // <-- Reusable nav
+import { AvatarPicker } from '../components/Avatar';
+import { useApp } from '../context/AppContext';
 
 export default function StudentProfileScreen() {
   const navigation = useNavigation();
+  const { studentProfile, updateStudentProfile } = useApp();
   // Example toggle state for a setting
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
 
@@ -76,12 +79,17 @@ export default function StudentProfileScreen() {
 
             <View style={styles.profileCard}>
               <View style={styles.avatarContainer}>
-                <Text style={styles.avatarText}>CO</Text>
+                <AvatarPicker
+                  uri={studentProfile.avatar}
+                  name={studentProfile.name}
+                  size={70}
+                  onChange={(uri) => updateStudentProfile({ avatar: uri })}
+                />
               </View>
-              
+
               <View style={styles.profileInfo}>
-                <Text style={styles.nameText}>Chidinma Okafor</Text>
-                <Text style={styles.emailText}>chidinma.o@example.com</Text>
+                <Text style={styles.nameText}>{studentProfile.name}</Text>
+                <Text style={styles.emailText}>{studentProfile.email}</Text>
                 
                 {/* Clean inline badge for student goal */}
                 <View style={styles.goalBadge}>
@@ -127,6 +135,20 @@ export default function StudentProfileScreen() {
                 icon="shield" 
                 title="Privacy & Security" 
                 onPress={() => {}} 
+              />
+            </View>
+
+            <Text style={styles.sectionHeader}>MANAGEMENT</Text>
+            <View style={styles.settingsGroup}>
+              <SettingsRow
+                icon="sliders"
+                title="Admin Dashboard"
+                onPress={() => navigation.navigate('AdminDashboard')}
+              />
+              <SettingsRow
+                icon="users"
+                title="Group Classes"
+                onPress={() => navigation.navigate('GroupClasses')}
               />
             </View>
 
@@ -197,20 +219,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarContainer: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#DDF0D6',
-    alignItems: 'center',
-    justifyContent: 'center',
     marginRight: 16,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  avatarText: {
-    color: '#1A3312',
-    fontSize: 22,
-    fontWeight: '800',
   },
   profileInfo: {
     flex: 1,

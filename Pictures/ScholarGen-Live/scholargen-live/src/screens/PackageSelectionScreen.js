@@ -12,10 +12,27 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import BottomNav from '../components/BottomNav'; // <-- Using your reusable component
+import { useApp } from '../context/AppContext';
+import { formatNaira } from '../theme';
 
 export default function PackageSelectionScreen() {
-  const [selectedPlan, setSelectedPlan] = useState('Intensive');
   const navigation = useNavigation();
+  const { packages, familyPackages } = useApp();
+
+  // Pricing is fully admin-controlled — tutors never set prices.
+  const plans = packages.filter((p) => p.enabled);
+  const familyPlans = familyPackages.filter((p) => p.enabled);
+  const [selectedPlan, setSelectedPlan] = useState(
+    plans.find((p) => p.popular)?.id || plans[0]?.id,
+  );
+
+  // First plan reads as the light "entry" card, the popular plan as the rich
+  // green card, and any others as the deep premium card.
+  const variantFor = (plan, index) => {
+    if (plan.popular) return 'intensive';
+    if (index === 0) return 'standard';
+    return 'elite';
+  };
 
   return (
     <>
@@ -40,100 +57,90 @@ export default function PackageSelectionScreen() {
           </View>
 
           {/* Scrollable Plans */}
-          <ScrollView 
+          <ScrollView
             style={styles.scrollArea}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
           >
-            {/* 1. Standard Plan Card */}
-            <TouchableOpacity 
-              style={[
-                styles.card, 
-                styles.standardCard, 
-                selectedPlan === 'Standard' && styles.activeCardOutline
-              ]}
-              activeOpacity={0.9}
-              onPress={() => setSelectedPlan('Standard')}
-            >
-              <View style={styles.cardHeaderRow}>
-                <Text style={[styles.planTitle, styles.darkText]}>Standard{'\n'}Plan</Text>
-                <View style={styles.priceContainer}>
-                  <Text style={[styles.planPrice, styles.darkText]}>₦95k</Text>
-                  <Text style={[styles.pricePeriod, styles.grayText]}>/month</Text>
-                </View>
-              </View>
-              
-              <Text style={[styles.planDetails, styles.grayText]}>
-                3 classes/week · 2hrs each
-              </Text>
+            {plans.map((plan, index) => {
+              const variant = variantFor(plan, index);
+              const isLight = variant === 'standard';
+              const isSelected = selectedPlan === plan.id;
+              const cardStyle =
+                variant === 'standard'
+                  ? styles.standardCard
+                  : variant === 'intensive'
+                  ? styles.intensiveCard
+                  : styles.eliteCard;
+              return (
+                <TouchableOpacity
+                  key={plan.id}
+                  style={[styles.card, cardStyle, isSelected && styles.activeCardOutline]}
+                  activeOpacity={0.9}
+                  onPress={() => setSelectedPlan(plan.id)}
+                >
+                  {plan.popular && (
+                    <View style={styles.popularRibbon}>
+                      <Text style={styles.popularText}>POPULAR</Text>
+                    </View>
+                  )}
 
-              <View style={styles.featuresList}>
-                <FeatureItem text="Live Classes" color="#34931A" textColor="#4A5D44" />
-                <FeatureItem text="Progress Reports" color="#34931A" textColor="#4A5D44" />
-                <FeatureItem text="Study Plans" color="#34931A" textColor="#4A5D44" />
-              </View>
-            </TouchableOpacity>
+                  <View style={styles.cardHeaderRow}>
+                    <Text style={[styles.planTitle, isLight ? styles.darkText : styles.lightText]}>
+                      {plan.name}
+                    </Text>
+                    <View style={styles.priceContainer}>
+                      <Text style={[styles.planPrice, isLight ? styles.darkText : styles.lightText]}>
+                        {formatNaira(plan.price, { compact: true })}
+                      </Text>
+                      <Text style={[styles.pricePeriod, isLight ? styles.grayText : styles.lightGrayText]}>
+                        /{plan.period}
+                      </Text>
+                    </View>
+                  </View>
 
-            {/* 2. Intensive Plan Card */}
-            <TouchableOpacity 
-              style={[
-                styles.card, 
-                styles.intensiveCard, 
-                selectedPlan === 'Intensive' && styles.activeCardOutline
-              ]}
-              activeOpacity={0.9}
-              onPress={() => setSelectedPlan('Intensive')}
-            >
-              {/* Sleeker Popular Ribbon */}
-              <View style={styles.popularRibbon}>
-                <Text style={styles.popularText}>POPULAR</Text>
-              </View>
+                  <Text style={[styles.planDetails, isLight ? styles.grayText : styles.lightGreenText]}>
+                    {plan.details}
+                  </Text>
 
-              <View style={styles.cardHeaderRow}>
-                <Text style={[styles.planTitle, styles.lightText]}>Intensive{'\n'}Plan</Text>
-                <View style={styles.priceContainer}>
-                  <Text style={[styles.planPrice, styles.lightText]}>₦140k</Text>
-                  <Text style={[styles.pricePeriod, styles.lightGrayText]}>/month</Text>
-                </View>
-              </View>
-              
-              <Text style={[styles.planDetails, styles.lightGreenText]}>
-                4 classes/week · 2hrs each
-              </Text>
+                  <View style={styles.featuresList}>
+                    {plan.features.map((feat) => (
+                      <FeatureItem
+                        key={feat}
+                        text={feat}
+                        color={isLight ? '#34931A' : '#85D161'}
+                        textColor={isLight ? '#4A5D44' : '#DDF0D6'}
+                      />
+                    ))}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
 
-              <View style={styles.featuresList}>
-                <FeatureItem text="Full Assessments" color="#85D161" textColor="#DDF0D6" />
-                <FeatureItem text="Mentorship" color="#85D161" textColor="#DDF0D6" />
-              </View>
-            </TouchableOpacity>
-
-            {/* 3. Elite Mentorship Card */}
-            <TouchableOpacity 
-              style={[
-                styles.card, 
-                styles.eliteCard, 
-                selectedPlan === 'Elite' && styles.activeCardOutline
-              ]}
-              activeOpacity={0.9}
-              onPress={() => setSelectedPlan('Elite')}
-            >
-              <View style={styles.cardHeaderRow}>
-                <Text style={[styles.planTitle, styles.lightText]}>Elite{'\n'}Mentorship</Text>
-                <View style={styles.priceContainer}>
-                  <Text style={[styles.planPrice, styles.lightText]}>₦180k</Text>
-                  <Text style={[styles.pricePeriod, styles.lightGrayText]}>/month</Text>
-                </View>
-              </View>
-              
-              <Text style={[styles.planDetails, styles.goldText]}>
-                Premium · Scholarship-focused
-              </Text>
-
-              <View style={styles.featuresList}>
-                <FeatureItem text="1-on-1 Strategy Mapping" color="#85D161" textColor="#DDF0D6" />
-                <FeatureItem text="Global Opportunities" color="#85D161" textColor="#DDF0D6" />
-              </View>
-            </TouchableOpacity>
+            {/* Family Learning Packages (admin-controlled) */}
+            {familyPlans.length > 0 && (
+              <>
+                <Text style={styles.familyHeader}>FAMILY LEARNING PACKAGES</Text>
+                <Text style={styles.familySub}>One tutor teaching multiple children — at a discount.</Text>
+                {familyPlans.map((fam) => (
+                  <View key={fam.id} style={styles.familyCard}>
+                    <View style={styles.familyIcon}>
+                      <Feather name="users" size={20} color="#34931A" />
+                    </View>
+                    <View style={styles.familyInfo}>
+                      <Text style={styles.familyName}>{fam.name}</Text>
+                      <Text style={styles.familyMeta}>
+                        {fam.children} children · {fam.discountPercent}% family discount
+                      </Text>
+                    </View>
+                    <View style={styles.familyPriceWrap}>
+                      <Text style={styles.familyPrice}>{formatNaira(fam.price, { compact: true })}</Text>
+                      <Text style={styles.familyPriceSub}>/month</Text>
+                    </View>
+                  </View>
+                ))}
+              </>
+            )}
 
             {/* Clean Continue Button */}
             <TouchableOpacity style={styles.continueButton} activeOpacity={0.8}>
@@ -293,6 +300,45 @@ const styles = StyleSheet.create({
   lightGrayText: { color: '#AABBA0' },
   lightGreenText: { color: '#DDF0D6' },
   goldText: { color: '#F3C353' }, 
+  familyHeader: {
+    color: '#8B9A8B',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  familySub: {
+    color: '#8B9A8B',
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: 16,
+  },
+  familyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F0F4F0',
+  },
+  familyIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#F5F9F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  familyInfo: { flex: 1 },
+  familyName: { color: '#1A1A1A', fontSize: 15, fontWeight: '800' },
+  familyMeta: { color: '#8B9A8B', fontSize: 12, fontWeight: '500', marginTop: 2 },
+  familyPriceWrap: { alignItems: 'flex-end' },
+  familyPrice: { color: '#34931A', fontSize: 16, fontWeight: '900' },
+  familyPriceSub: { color: '#8B9A8B', fontSize: 11, fontWeight: '500' },
   continueButton: {
     backgroundColor: '#34931A', // Matches the updated flat aesthetic
     borderRadius: 16,

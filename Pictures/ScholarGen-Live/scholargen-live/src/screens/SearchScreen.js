@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   StyleSheet,
   Text,
   View,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   StatusBar,
@@ -12,19 +11,33 @@ import {
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
 import BottomNav from '../components/BottomNav'; // <-- Reusable nav
+import Avatar from '../components/Avatar';
+import { useApp } from '../context/AppContext';
+
+// Students & parents can find tutors across five admin-controlled dimensions.
+const DIMENSIONS = [
+  { key: 'Level', label: 'Education Level' },
+  { key: 'Stream', label: 'Stream' },
+  { key: 'Subject', label: 'Subject' },
+  { key: 'Exam', label: 'Examination' },
+  { key: 'Category', label: 'Category' },
+];
 
 export default function SearchScreen() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState('All');
+  const navigation = useNavigation();
+  const { educationLevels, streams, subjects, examinations, categories } = useApp();
 
-  const filters = ['All', 'Tutors', 'JAMB', 'WAEC', 'Mathematics', 'Physics', 'English'];
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dimension, setDimension] = useState('Level');
+  const [selected, setSelected] = useState(null);
 
   const recentSearches = [
     'Calculus 101',
     'JAMB Past Questions',
     'Dr. Funke Adeyemi',
-    'Organic Chemistry'
+    'Public Speaking',
   ];
 
   const trendingTutors = [
@@ -33,6 +46,53 @@ export default function SearchScreen() {
     { id: '3', initials: 'SO', name: 'Samuel O.', subject: 'Economics', bgColor: '#E0F2F1', textColor: '#00695C', rating: '5.0' },
   ];
 
+  // Build the list of options for the active dimension. Education levels are
+  // grouped (Primary School, Senior Secondary, …); the rest are flat.
+  const { grouped, flat } = useMemo(() => {
+    const enabled = (arr) => arr.filter((it) => it.enabled);
+    switch (dimension) {
+      case 'Level': {
+        const items = enabled(educationLevels);
+        const groups = {};
+        items.forEach((it) => {
+          groups[it.group] = groups[it.group] || [];
+          groups[it.group].push(it);
+        });
+        return { grouped: groups, flat: null };
+      }
+      case 'Stream':
+        return { grouped: null, flat: enabled(streams) };
+      case 'Subject':
+        return { grouped: null, flat: enabled(subjects) };
+      case 'Exam':
+        return { grouped: null, flat: enabled(examinations) };
+      case 'Category':
+      default: {
+        const items = enabled(categories);
+        const groups = {};
+        items.forEach((it) => {
+          groups[it.group] = groups[it.group] || [];
+          groups[it.group].push(it);
+        });
+        return { grouped: groups, flat: null };
+      }
+    }
+  }, [dimension, educationLevels, streams, subjects, examinations, categories]);
+
+  const renderChip = (item) => {
+    const active = selected === item.id;
+    return (
+      <TouchableOpacity
+        key={item.id}
+        style={[styles.optionChip, active && styles.optionChipActive]}
+        activeOpacity={0.8}
+        onPress={() => setSelected(active ? null : item.id)}
+      >
+        <Text style={[styles.optionText, active && styles.optionTextActive]}>{item.name}</Text>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
@@ -40,19 +100,19 @@ export default function SearchScreen() {
       <View style={styles.container}>
         {/* TOP SECTION: Deep Premium Gradient Header */}
         <LinearGradient
-          colors={['#10240C', '#1A3312']} 
+          colors={['#10240C', '#1A3312']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.topSection}
         >
-          <Text style={styles.pageHeaderTitle}>Discover</Text>
+          <Text style={styles.pageHeaderTitle}>Find a Tutor</Text>
 
           {/* Hero Search Bar */}
           <View style={styles.searchContainer}>
             <Feather name="search" size={20} color="#8B9A8B" style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search tutors, subjects, or exams..."
+              placeholder="Search tutors, subjects, skills or exams..."
               placeholderTextColor="#AABBA0"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -67,33 +127,67 @@ export default function SearchScreen() {
           </View>
         </LinearGradient>
 
-        <ScrollView 
+        <ScrollView
           style={styles.scrollArea}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {/* Horizontal Filter Pills */}
-          <ScrollView 
-            horizontal 
+          {/* Browse-by dimension selector */}
+          <ScrollView
+            horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.filterStrip}
           >
-            {filters.map((filter) => {
-              const isSelected = activeFilter === filter;
+            {DIMENSIONS.map((d) => {
+              const isSelected = dimension === d.key;
               return (
                 <TouchableOpacity
-                  key={filter}
+                  key={d.key}
                   style={[styles.filterPill, isSelected && styles.activeFilterPill]}
-                  onPress={() => setActiveFilter(filter)}
+                  onPress={() => {
+                    setDimension(d.key);
+                    setSelected(null);
+                  }}
                   activeOpacity={0.7}
                 >
                   <Text style={[styles.filterText, isSelected && styles.activeFilterText]}>
-                    {filter}
+                    {d.label}
                   </Text>
                 </TouchableOpacity>
               );
             })}
           </ScrollView>
+
+          {/* Options for the active dimension */}
+          <View style={styles.sectionContainer}>
+            <Text style={[styles.sectionHeader, { marginBottom: 16 }]}>
+              FIND TUTORS BY {DIMENSIONS.find((d) => d.key === dimension)?.label.toUpperCase()}
+            </Text>
+
+            {grouped
+              ? Object.keys(grouped).map((groupName) => (
+                  <View key={groupName} style={styles.groupBlock}>
+                    <Text style={styles.groupLabel}>{groupName}</Text>
+                    <View style={styles.optionWrap}>
+                      {grouped[groupName].map(renderChip)}
+                    </View>
+                  </View>
+                ))
+              : (
+                <View style={styles.optionWrap}>{flat.map(renderChip)}</View>
+              )}
+
+            {selected && (
+              <TouchableOpacity
+                style={styles.applyButton}
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate('TutorProfile')}
+              >
+                <Feather name="users" size={16} color="#FFFFFF" />
+                <Text style={styles.applyButtonText}>View matching tutors</Text>
+              </TouchableOpacity>
+            )}
+          </View>
 
           {/* Recent Searches Section */}
           <View style={styles.sectionContainer}>
@@ -122,22 +216,36 @@ export default function SearchScreen() {
           {/* Trending Tutors Horizontal Section */}
           <View style={styles.sectionContainer}>
             <Text style={[styles.sectionHeader, { marginBottom: 16 }]}>TRENDING TUTORS</Text>
-            
-            <ScrollView 
-              horizontal 
+
+            <ScrollView
+              horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.trendingStrip}
-              snapToInterval={200} // Smooth snapping for cards
+              snapToInterval={200}
               decelerationRate="fast"
             >
               {trendingTutors.map((tutor) => (
-                <TouchableOpacity key={tutor.id} style={styles.trendingCard} activeOpacity={0.8}>
+                <TouchableOpacity
+                  key={tutor.id}
+                  style={styles.trendingCard}
+                  activeOpacity={0.8}
+                  onPress={() =>
+                    navigation.navigate('TutorProfile', {
+                      tutorName: tutor.name,
+                      tutorInitials: tutor.initials,
+                      tutorSubject: tutor.subject,
+                    })
+                  }
+                >
                   <View style={styles.trendingCardTop}>
-                    <View style={[styles.tutorAvatar, { backgroundColor: tutor.bgColor }]}>
-                      <Text style={[styles.tutorInitials, { color: tutor.textColor }]}>
-                        {tutor.initials}
-                      </Text>
-                    </View>
+                    <Avatar
+                      uri={tutor.avatar}
+                      name={tutor.name}
+                      initials={tutor.initials}
+                      size={48}
+                      bg={tutor.bgColor}
+                      fg={tutor.textColor}
+                    />
                     <View style={styles.ratingPill}>
                       <Ionicons name="star" size={12} color="#F3C353" />
                       <Text style={styles.ratingText}>{tutor.rating}</Text>
@@ -150,36 +258,40 @@ export default function SearchScreen() {
             </ScrollView>
           </View>
 
-          {/* Browse Categories (Vertical Flat List) */}
+          {/* Quick links */}
           <View style={styles.sectionContainer}>
-            <Text style={[styles.sectionHeader, { marginBottom: 16 }]}>BROWSE CATEGORIES</Text>
-            
+            <Text style={[styles.sectionHeader, { marginBottom: 16 }]}>MORE WAYS TO LEARN</Text>
+
             <View style={styles.categoryGrid}>
+              <TouchableOpacity
+                style={styles.categoryCard}
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate('GroupClasses')}
+              >
+                <View style={[styles.categoryIcon, { backgroundColor: '#E8F5E9' }]}>
+                  <Feather name="users" size={20} color="#2E7D32" />
+                </View>
+                <View style={styles.flex1}>
+                  <Text style={styles.categoryTitle}>Live Group Classes</Text>
+                  <Text style={styles.categorySub}>JAMB, WAEC, IELTS & skills bootcamps</Text>
+                </View>
+                <Feather name="chevron-right" size={20} color="#B0BCB0" />
+              </TouchableOpacity>
+
               <TouchableOpacity style={styles.categoryCard} activeOpacity={0.7}>
                 <View style={[styles.categoryIcon, { backgroundColor: '#F4E8FA' }]}>
                   <Feather name="book" size={20} color="#8E44AD" />
                 </View>
-                <View>
+                <View style={styles.flex1}>
                   <Text style={styles.categoryTitle}>Past Questions</Text>
                   <Text style={styles.categorySub}>Over 10,000+ questions</Text>
                 </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.categoryCard} activeOpacity={0.7}>
-                <View style={[styles.categoryIcon, { backgroundColor: '#E8F5E9' }]}>
-                  <Feather name="users" size={20} color="#2E7D32" />
-                </View>
-                <View>
-                  <Text style={styles.categoryTitle}>Live Group Classes</Text>
-                  <Text style={styles.categorySub}>Join peer study sessions</Text>
-                </View>
+                <Feather name="chevron-right" size={20} color="#B0BCB0" />
               </TouchableOpacity>
             </View>
           </View>
-
         </ScrollView>
-        
-        {/* Reusable Bottom Nav Added */}
+
         <BottomNav />
       </View>
     </>
@@ -189,13 +301,13 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FCFDFC', 
+    backgroundColor: '#FCFDFC',
   },
-  
+
   // -- HEADER & HERO SEARCH --
   topSection: {
     paddingHorizontal: 24,
-    paddingTop: Platform.OS === 'ios' ? 60 : 50, 
+    paddingTop: Platform.OS === 'ios' ? 60 : 50,
     paddingBottom: 32,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
@@ -210,11 +322,10 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF', // Pure white pops beautifully inside the dark gradient
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     height: 56,
     paddingHorizontal: 16,
-    // Add a very subtle soft shadow to lift it off the green
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -246,14 +357,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 110, // Clears the absolute nav
+    paddingBottom: 110,
   },
 
-  // -- FILTER STRIP --
+  // -- DIMENSION SELECTOR --
   filterStrip: {
     paddingHorizontal: 24,
     paddingTop: 24,
-    paddingBottom: 16,
+    paddingBottom: 8,
     gap: 10,
   },
   filterPill: {
@@ -301,6 +412,58 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
+  // -- OPTION CHIPS --
+  groupBlock: {
+    marginBottom: 18,
+  },
+  groupLabel: {
+    color: '#4A5D44',
+    fontSize: 13,
+    fontWeight: '800',
+    marginBottom: 10,
+  },
+  optionWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  optionChip: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#F0F4F0',
+  },
+  optionChipActive: {
+    backgroundColor: '#Edf4E9',
+    borderColor: '#34931A',
+  },
+  optionText: {
+    color: '#4A5D44',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  optionTextActive: {
+    color: '#2D8C1A',
+    fontWeight: '800',
+  },
+  applyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#34931A',
+    borderRadius: 14,
+    paddingVertical: 14,
+    gap: 8,
+    marginTop: 20,
+  },
+  applyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
   // -- RECENT SEARCHES --
   recentList: {
     backgroundColor: '#FFFFFF',
@@ -340,10 +503,10 @@ const styles = StyleSheet.create({
   // -- TRENDING HORIZONTAL CARDS --
   trendingStrip: {
     gap: 16,
-    paddingRight: 48, // Allows the last card to scroll slightly past the screen edge
+    paddingRight: 48,
   },
   trendingCard: {
-    width: 180, // Fixed width for horizontal scrolling
+    width: 180,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
@@ -355,17 +518,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 16,
-  },
-  tutorAvatar: {
-    width: 48, 
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tutorInitials: {
-    fontSize: 16,
-    fontWeight: '800',
   },
   ratingPill: {
     flexDirection: 'row',
@@ -394,7 +546,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  // -- BROWSE CATEGORIES --
+  // -- QUICK LINKS --
   categoryGrid: {
     gap: 12,
   },
@@ -415,6 +567,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 16,
   },
+  flex1: { flex: 1 },
   categoryTitle: {
     color: '#1A1A1A',
     fontSize: 15,
@@ -425,5 +578,5 @@ const styles = StyleSheet.create({
     color: '#8B9A8B',
     fontSize: 13,
     fontWeight: '500',
-  }
+  },
 });

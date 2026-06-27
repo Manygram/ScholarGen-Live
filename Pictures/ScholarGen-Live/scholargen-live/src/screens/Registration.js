@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -13,9 +13,26 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { AvatarPicker } from '../components/Avatar';
+import { useApp } from '../context/AppContext';
 
 export default function RegistrationScreen() {
   const navigation = useNavigation();
+  const { studentProfile, updateStudentProfile } = useApp();
+
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [avatar, setAvatar] = useState(studentProfile.avatar);
+
+  const handleContinue = () => {
+    updateStudentProfile({
+      ...(name.trim() ? { name: name.trim() } : {}),
+      ...(email.trim() ? { email: email.trim() } : {}),
+      avatar,
+    });
+    navigation.navigate('Learning');
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       {/* Status Bar completely hidden as requested */}
@@ -44,6 +61,12 @@ export default function RegistrationScreen() {
             <Text style={styles.subtitleText}>Let's get you started</Text>
           </View>
 
+          {/* Profile Picture */}
+          <View style={styles.avatarSection}>
+            <AvatarPicker uri={avatar} name={name || 'New Student'} size={88} onChange={setAvatar} />
+            <Text style={styles.avatarHint}>Add a profile picture</Text>
+          </View>
+
           {/* Form Section */}
           <View style={styles.formSection}>
             {/* Full Name Input */}
@@ -56,6 +79,8 @@ export default function RegistrationScreen() {
                   placeholder="Chidinma Okafor"
                   placeholderTextColor="#8B9A8B"
                   autoCapitalize="words"
+                  value={name}
+                  onChangeText={setName}
                 />
               </View>
             </View>
@@ -85,6 +110,8 @@ export default function RegistrationScreen() {
                   placeholderTextColor="#8B9A8B"
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  value={email}
+                  onChangeText={setEmail}
                 />
               </View>
             </View>
@@ -120,7 +147,7 @@ export default function RegistrationScreen() {
 
         {/* Fixed Bottom Button */}
         <View style={styles.bottomSection}>
-          <TouchableOpacity style={styles.continueButton} activeOpacity={0.8} onPress={() => navigation.navigate('Learning')}>
+          <TouchableOpacity style={styles.continueButton} activeOpacity={0.8} onPress={handleContinue}>
             <Text style={styles.continueButtonText}>Continue</Text>
           </TouchableOpacity>
         </View>
@@ -143,7 +170,17 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   headerSection: {
-    marginBottom: 30,
+    marginBottom: 24,
+  },
+  avatarSection: {
+    alignItems: 'center',
+    marginBottom: 28,
+  },
+  avatarHint: {
+    color: '#6B7A63',
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 12,
   },
   stepText: {
     color: '#34931A',

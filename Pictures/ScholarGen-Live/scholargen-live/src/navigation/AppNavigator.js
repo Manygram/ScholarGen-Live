@@ -27,6 +27,10 @@ import StudentsScreen from '../screens/StudentsScreen';
 import TutorDashboardScreen from '../screens/TutorDashboardScreen';
 import TutorOnboardingScreen from '../screens/TutorOnboardingScreen';
 
+// -- SHARED / MARKETPLACE SCREENS --
+import GroupClassesScreen from '../screens/GroupClassesScreen';
+import AdminDashboardScreen from '../screens/AdminDashboardScreen';
+
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
@@ -78,6 +82,10 @@ export default function AppNavigator() {
         <Stack.Screen name="SessionReport" component={SessionReportScreen} />
         <Stack.Screen name="Earnings" component={EarningsScreen} />
         <Stack.Screen name="Availability" component={AvailabilityScreen} />
+
+        {/* === SHARED / MARKETPLACE === */}
+        <Stack.Screen name="GroupClasses" component={GroupClassesScreen} />
+        <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
 
       </Stack.Navigator>
     </NavigationContainer>

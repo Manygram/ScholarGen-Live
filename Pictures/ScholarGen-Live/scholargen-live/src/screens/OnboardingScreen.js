@@ -83,11 +83,11 @@ export default function OnboardingScreen() {
 
             {/* 3. Moderated Font Weight and Size */}
             <Text style={styles.heading}>
-              Your path to{'\n'}academic{'\n'}excellence.
+              Find the right{'\n'}tutor, coach, or{'\n'}mentor for your{'\n'}goals.
             </Text>
-            
+
             <Text style={styles.subheading}>
-              Verified tutors. Live classes. Real results.
+              Academics, exams, skills & professional growth — all in one place.
             </Text>
           </View>
 
@@ -165,9 +165,9 @@ const styles = StyleSheet.create({
   },
   heading: {
     color: '#FFFFFF',
-    fontSize: 40, // Reduced from 48 for a more moderate look
+    fontSize: 34, // Sized to fit the broader four-line headline
     fontWeight: '600', // Reduced from 700/900 for a cleaner aesthetic
-    lineHeight: 46, 
+    lineHeight: 40,
     letterSpacing: -1,
   },
   subheading: {

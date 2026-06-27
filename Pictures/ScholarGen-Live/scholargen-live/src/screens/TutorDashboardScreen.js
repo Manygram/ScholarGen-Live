@@ -12,6 +12,8 @@ import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import TutorBottomNav from '../components/TutorBottomNav';
+import Avatar from '../components/Avatar';
+import { useApp } from '../context/AppContext';
 import { colors, paletteFor, formatNaira } from '../theme';
 
 // Mock data — wire to API later.
@@ -41,6 +43,8 @@ function initials(name) {
 
 export default function TutorDashboardScreen() {
   const navigation = useNavigation();
+  const { tutorProfile } = useApp();
+  const tutorFirstName = (tutorProfile.name || 'Tutor').split(' ').slice(0, 2).join(' ');
 
   return (
     <>
@@ -60,9 +64,18 @@ export default function TutorDashboardScreen() {
             style={styles.hero}
           >
             <View style={styles.headerRow}>
-              <View>
-                <Text style={styles.greetingText}>Good morning,</Text>
-                <Text style={styles.nameText}>Dr. Funke 👋</Text>
+              <View style={styles.headerProfile}>
+                <Avatar
+                  uri={tutorProfile.avatar}
+                  name={tutorProfile.name}
+                  size={46}
+                  borderColor="rgba(255,255,255,0.15)"
+                  borderWidth={2}
+                />
+                <View style={styles.headerGreeting}>
+                  <Text style={styles.greetingText}>Good morning,</Text>
+                  <Text style={styles.nameText}>{tutorFirstName} 👋</Text>
+                </View>
               </View>
               <View style={styles.headerActions}>
                 <TouchableOpacity style={styles.bellButton} activeOpacity={0.7}>
@@ -282,6 +295,8 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   headerActions: { flexDirection: 'row', alignItems: 'center' },
+  headerProfile: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  headerGreeting: { marginLeft: 12 },
   greetingText: {
     color: colors.inkOnDarkSoft,
     fontSize: 13,
