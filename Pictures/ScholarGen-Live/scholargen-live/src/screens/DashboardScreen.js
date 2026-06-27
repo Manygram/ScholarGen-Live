@@ -13,19 +13,38 @@ import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import BottomNav from '../components/BottomNav'; // <-- Import the reusable component
+import PromoBanner from '../components/PromoBanner';
+import Avatar from '../components/Avatar';
+import { useApp } from '../context/AppContext';
+import { useApiData } from '../hooks/useApiData';
+import api from '../services/api';
+import { mapApiTutor } from '../services/transform';
+
+// Fallback tutors shown until the API has approved tutors to return.
+const FALLBACK_TUTORS = [
+  { id: '1', name: 'Dr. Funke Adeyemi', subject: 'Physics' },
+  { id: '2', name: 'Kelechi E.', subject: 'Mathematics' },
+  { id: '3', name: 'Aisha O.', subject: 'Chemistry' },
+  { id: '4', name: 'David O.', subject: 'English' },
+  { id: '5', name: 'Binta J.', subject: 'Biology' },
+  { id: '6', name: 'Samuel O.', subject: 'Economics' },
+];
 
 export default function DashboardScreen() {
   const navigation = useNavigation();
+  const { studentProfile, categories } = useApp();
+  const firstName = (studentProfile.name || 'there').split(' ')[0];
 
-  // Mock data for the recommended tutors
-  const recommendedTutors = [
-    { id: '1', initials: 'FA', name: 'Dr. Funke Adeyemi', subject: 'Physics', bgColor: '#E8F5E9', textColor: '#2E7D32' },
-    { id: '2', initials: 'KE', name: 'Kelechi E.', subject: 'Mathematics', bgColor: '#FFF3E0', textColor: '#E65100' },
-    { id: '3', initials: 'AO', name: 'Aisha O.', subject: 'Chemistry', bgColor: '#FFEBEE', textColor: '#C62828' },
-    { id: '4', initials: 'DO', name: 'David O.', subject: 'English', bgColor: '#E3F2FD', textColor: '#1565C0' },
-    { id: '5', initials: 'BJ', name: 'Binta J.', subject: 'Biology', bgColor: '#F3E5F5', textColor: '#6A1B9A' },
-    { id: '6', initials: 'SO', name: 'Samuel O.', subject: 'Economics', bgColor: '#E0F2F1', textColor: '#00695C' },
-  ];
+  // Surface a handful of enabled learning categories so students can see the
+  // platform spans academics AND skills/professional development.
+  const exploreCategories = categories.filter((c) => c.enabled).slice(0, 8);
+
+  // Live recommended tutors from the public discovery endpoint, with fallback.
+  const { data: apiTutors } = useApiData(() => api.tutors.list(), []);
+  const recommendedTutors =
+    Array.isArray(apiTutors) && apiTutors.length > 0
+      ? apiTutors.slice(0, 6).map(mapApiTutor)
+      : FALLBACK_TUTORS;
 
   return (
     <>
@@ -46,10 +65,23 @@ export default function DashboardScreen() {
           >
             {/* Header Info */}
             <View style={styles.headerRow}>
-              <View>
-                <Text style={styles.greetingText}>Good morning,</Text>
-                <Text style={styles.nameText}>Chidinma 👋</Text>
-              </View>
+              <TouchableOpacity
+                style={styles.headerProfile}
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate('Profile')}
+              >
+                <Avatar
+                  uri={studentProfile.avatar}
+                  name={studentProfile.name}
+                  size={46}
+                  borderColor="rgba(255,255,255,0.15)"
+                  borderWidth={2}
+                />
+                <View style={styles.headerGreeting}>
+                  <Text style={styles.greetingText}>Good morning,</Text>
+                  <Text style={styles.nameText}>{firstName} 👋</Text>
+                </View>
+              </TouchableOpacity>
               <TouchableOpacity style={styles.bellButton} activeOpacity={0.7}>
                 <View style={styles.notificationDot} />
                 <Feather name="bell" size={18} color="#FFFFFF" />
@@ -75,7 +107,37 @@ export default function DashboardScreen() {
 
           {/* Bottom Content Section */}
           <View style={styles.bottomContentSection}>
-            
+
+            {/* Rotating promotional banners (admin-controlled) */}
+            <PromoBanner />
+
+            {/* Explore Learning Categories */}
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionHeader}>Explore Learning</Text>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('Search')}>
+                <Text style={styles.seeAllText}>See all</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.categoryStrip}
+            >
+              {exploreCategories.map((cat) => (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={styles.categoryChip}
+                  activeOpacity={0.8}
+                  onPress={() => navigation.navigate('Search')}
+                >
+                  <View style={styles.categoryChipIcon}>
+                    <Ionicons name={cat.icon || 'school'} size={18} color="#34931A" />
+                  </View>
+                  <Text style={styles.categoryChipText} numberOfLines={1}>{cat.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
             {/* Next Class Card */}
             <View style={styles.primaryCard}>
               <View style={styles.cardTopRow}>
@@ -128,18 +190,22 @@ export default function DashboardScreen() {
                   activeOpacity={0.7}
                   onPress={() => {
                     // Navigate and pass the tutor data as route params!
-                    navigation.navigate('TutorProfile', { 
+                    navigation.navigate('TutorProfile', {
+                      tutorId: tutor.id,
                       tutorName: tutor.name,
                       tutorInitials: tutor.initials,
-                      tutorSubject: tutor.subject 
+                      tutorSubject: tutor.subject,
+                      tutorAvatar: tutor.avatar,
                     });
                   }}
                 >
-                  <View style={[styles.tutorAvatar, { backgroundColor: tutor.bgColor }]}>
-                    <Text style={[styles.tutorInitials, { color: tutor.textColor }]}>
-                      {tutor.initials}
-                    </Text>
-                  </View>
+                  <Avatar
+                    uri={tutor.avatar}
+                    name={tutor.name}
+                    initials={tutor.initials}
+                    size={48}
+                    style={styles.tutorAvatar}
+                  />
                   <Text style={styles.tutorName} numberOfLines={1}>{tutor.name}</Text>
                   <Text style={styles.tutorSubject} numberOfLines={1}>{tutor.subject}</Text>
                 </TouchableOpacity>
@@ -179,6 +245,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 32,
+  },
+  headerProfile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  headerGreeting: {
+    marginLeft: 12,
   },
   greetingText: {
     color: '#AABBA0',
@@ -368,6 +442,36 @@ const styles = StyleSheet.create({
     color: '#34931A',
     fontSize: 13,
     fontWeight: '600',
+  },
+  categoryStrip: {
+    gap: 12,
+    paddingRight: 24,
+    paddingBottom: 24,
+  },
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: '#F0F4F0',
+    gap: 10,
+  },
+  categoryChipIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#F5F9F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryChipText: {
+    color: '#1A1A1A',
+    fontSize: 13,
+    fontWeight: '700',
+    maxWidth: 150,
   },
   tutorGrid: {
     flexDirection: 'row',

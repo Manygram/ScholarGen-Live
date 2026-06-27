@@ -13,6 +13,7 @@ import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import BottomNav from '../components/BottomNav'; // Reusable component
+import Avatar from '../components/Avatar';
 
 export default function TutorProfileScreen() {
   const route = useRoute();
@@ -22,6 +23,8 @@ export default function TutorProfileScreen() {
   const tutorName = route.params?.tutorName || 'Dr. Funke Adeyemi';
   const tutorInitials = route.params?.tutorInitials || 'FA';
   const tutorSubject = route.params?.tutorSubject || 'Mathematics & Physics';
+  const tutorAvatar = route.params?.tutorAvatar || null;
+  const tutorId = route.params?.tutorId || null;
 
   // Mock Reviews Data
   const reviews = [
@@ -78,7 +81,16 @@ export default function TutorProfileScreen() {
             {/* Profile Info Row */}
             <View style={styles.profileInfoContainer}>
               <View style={styles.avatarContainer}>
-                <Text style={styles.avatarText}>{tutorInitials}</Text>
+                <Avatar
+                  uri={tutorAvatar}
+                  name={tutorName}
+                  initials={tutorInitials}
+                  size={80}
+                  bg="#DDF0D6"
+                  fg="#1A3312"
+                  borderColor="rgba(255, 255, 255, 0.1)"
+                  borderWidth={3}
+                />
               </View>
 
               <View style={styles.profileDetails}>
@@ -193,7 +205,7 @@ export default function TutorProfileScreen() {
             <TouchableOpacity 
               style={styles.bookButton} 
               activeOpacity={0.8}
-              onPress={() => navigation.navigate('PackageSelection')}
+              onPress={() => navigation.navigate('PackageSelection', { tutorId, tutorName })}
             >
               <Text style={styles.bookButtonText}>Book This Tutor →</Text>
             </TouchableOpacity>
@@ -245,20 +257,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   avatarContainer: {
-    width: 80, 
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#DDF0D6',
-    alignItems: 'center',
-    justifyContent: 'center',
     marginRight: 20,
-    borderWidth: 3,
-    borderColor: 'rgba(255, 255, 255, 0.1)', 
-  },
-  avatarText: {
-    color: '#1A3312',
-    fontSize: 26,
-    fontWeight: '800',
   },
   profileDetails: {
     flex: 1,

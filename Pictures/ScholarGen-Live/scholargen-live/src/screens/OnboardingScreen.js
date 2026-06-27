@@ -83,11 +83,11 @@ export default function OnboardingScreen() {
 
             {/* 3. Moderated Font Weight and Size */}
             <Text style={styles.heading}>
-              Your path to{'\n'}academic{'\n'}excellence.
+              Find the right{'\n'}tutor, coach, or{'\n'}mentor for your{'\n'}goals.
             </Text>
-            
+
             <Text style={styles.subheading}>
-              Verified tutors. Live classes. Real results.
+              Academics, exams, skills & professional growth — all in one place.
             </Text>
           </View>
 
@@ -102,12 +102,12 @@ export default function OnboardingScreen() {
                 <Text style={styles.primaryButtonText}>Get Started →</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={styles.secondaryButton} 
+              <TouchableOpacity
+                style={styles.secondaryButton}
                 activeOpacity={0.8}
                 onPress={() => navigation.navigate('TutorOnboarding')}
               >
-                <Text style={styles.secondaryButtonText}>I have an account</Text>
+                <Text style={styles.secondaryButtonText}>I am a Tutor</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -149,8 +149,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   centerSection: {
-    flex: 1.2, 
-    justifyContent: 'center',
+    flex: 1.2,
+    justifyContent: 'flex-end', // Sit the CTAs lower so they clear the headline
+    paddingBottom: 24,
   },
   bottomSection: {
     flex: 1,
@@ -165,9 +166,9 @@ const styles = StyleSheet.create({
   },
   heading: {
     color: '#FFFFFF',
-    fontSize: 40, // Reduced from 48 for a more moderate look
+    fontSize: 34, // Sized to fit the broader four-line headline
     fontWeight: '600', // Reduced from 700/900 for a cleaner aesthetic
-    lineHeight: 46, 
+    lineHeight: 40,
     letterSpacing: -1,
   },
   subheading: {

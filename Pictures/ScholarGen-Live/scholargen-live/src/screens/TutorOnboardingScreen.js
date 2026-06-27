@@ -8,44 +8,70 @@ import {
   TouchableOpacity,
   StatusBar,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme';
+import { AvatarPicker } from '../components/Avatar';
+import { useApp } from '../context/AppContext';
+import api from '../services/api';
 
 const STEPS = [
-  { key: 'profile', title: 'Personal Info', subtitle: 'Tell us about you & your subjects' },
+  { key: 'profile', title: 'Personal Info', subtitle: 'Your photo, subjects & areas you teach' },
   { key: 'documents', title: 'Verification', subtitle: 'Upload your ID and certificates' },
   { key: 'assessment', title: 'Subject Assessment', subtitle: '25–40 questions on your subject' },
   { key: 'demo', title: 'Demo Video', subtitle: 'A 3–5 minute sample lesson' },
   { key: 'review', title: 'Review & Submit', subtitle: 'Confirm and send for approval' },
 ];
 
-const SUBJECTS = [
-  'Mathematics', 'Physics', 'Chemistry', 'Biology', 'English',
-  'Further Maths', 'Economics', 'Government', 'Literature', 'Geography',
-];
-
 export default function TutorOnboardingScreen() {
   const navigation = useNavigation();
+  const { subjects: subjectCatalog, categories, tutorProfile, updateTutorProfile } = useApp();
+
+  // Tutors choose only from what Admin has published.
+  const subjectOptions = subjectCatalog.filter((s) => s.enabled).map((s) => s.name);
+  const categoryOptions = categories.filter((c) => c.enabled);
+
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
+  const [avatar, setAvatar] = useState(tutorProfile.avatar);
   const [subjects, setSubjects] = useState(['Mathematics']);
+  const [teachCategories, setTeachCategories] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
 
   const toggleSubject = (s) =>
     setSubjects((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
+  const toggleCategory = (id) =>
+    setTeachCategories((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   const isLast = step === STEPS.length - 1;
   const progress = ((step + 1) / STEPS.length) * 100;
 
-  const next = () => {
-    if (isLast) {
-      navigation.navigate('TutorDashboard');
-    } else {
+  const next = async () => {
+    if (!isLast) {
       setStep((s) => Math.min(STEPS.length - 1, s + 1));
+      return;
     }
+    // Final step → persist the tutor profile to the API. Best-effort: in the
+    // demo flow a live tutor session may not exist, so we still continue.
+    setSubmitting(true);
+    try {
+      await api.tutors.updateProfile({
+        ...(name.trim() ? { full_name: name.trim() } : {}),
+        subjects,
+      });
+    } catch {
+      // Swallow — onboarding can proceed; submission is retried from the dashboard.
+    }
+    updateTutorProfile({
+      ...(name.trim() ? { name: name.trim() } : {}),
+      avatar,
+    });
+    setSubmitting(false);
+    navigation.navigate('TutorDashboard');
   };
   const back = () => {
     if (step === 0) navigation.goBack();
@@ -97,6 +123,11 @@ export default function TutorOnboardingScreen() {
       >
         {step === 0 && (
           <>
+            <View style={styles.photoSection}>
+              <AvatarPicker uri={avatar} name={name || 'New Tutor'} size={96} onChange={setAvatar} />
+              <Text style={styles.photoHint}>Add a profile photo</Text>
+            </View>
+
             <Text style={styles.label}>Full Name</Text>
             <TextInput
               style={styles.input}
@@ -116,7 +147,7 @@ export default function TutorOnboardingScreen() {
             />
             <Text style={styles.label}>Subjects You Teach</Text>
             <View style={styles.subjectWrap}>
-              {SUBJECTS.map((s) => {
+              {subjectOptions.map((s) => {
                 const active = subjects.includes(s);
                 return (
                   <TouchableOpacity
@@ -128,6 +159,29 @@ export default function TutorOnboardingScreen() {
                     {active && <Feather name="check" size={12} color={colors.inkOnDark} />}
                     <Text style={[styles.subjectText, active && styles.subjectTextActive]}>
                       {s}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={[styles.label, { marginTop: 24 }]}>Teaching Categories</Text>
+            <Text style={styles.helperText}>
+              Choose from areas published by ScholarGen — academics, exams & skills.
+            </Text>
+            <View style={styles.subjectWrap}>
+              {categoryOptions.map((c) => {
+                const active = teachCategories.includes(c.id);
+                return (
+                  <TouchableOpacity
+                    key={c.id}
+                    style={[styles.subjectChip, active && styles.subjectChipActive]}
+                    activeOpacity={0.8}
+                    onPress={() => toggleCategory(c.id)}
+                  >
+                    {active && <Feather name="check" size={12} color={colors.inkOnDark} />}
+                    <Text style={[styles.subjectText, active && styles.subjectTextActive]}>
+                      {c.name}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -246,11 +300,22 @@ export default function TutorOnboardingScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.nextBtn} activeOpacity={0.85} onPress={next}>
-          <Text style={styles.nextBtnText}>
-            {isLast ? 'Submit Application' : 'Continue'}
-          </Text>
-          <Feather name={isLast ? 'send' : 'arrow-right'} size={18} color={colors.inkOnDark} />
+        <TouchableOpacity
+          style={[styles.nextBtn, submitting && styles.nextBtnDisabled]}
+          activeOpacity={0.85}
+          onPress={next}
+          disabled={submitting}
+        >
+          {submitting ? (
+            <ActivityIndicator color={colors.inkOnDark} />
+          ) : (
+            <>
+              <Text style={styles.nextBtnText}>
+                {isLast ? 'Submit Application' : 'Continue'}
+              </Text>
+              <Feather name={isLast ? 'send' : 'arrow-right'} size={18} color={colors.inkOnDark} />
+            </>
+          )}
         </TouchableOpacity>
       </View>
     </View>
@@ -328,6 +393,10 @@ const styles = StyleSheet.create({
   headerSubtitle: { color: colors.inkOnDarkSoft, fontSize: 13, fontWeight: '500', marginTop: 6 },
 
   scroll: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 120 },
+
+  photoSection: { alignItems: 'center', marginBottom: 24 },
+  photoHint: { color: colors.inkSoft, fontSize: 13, fontWeight: '600', marginTop: 12 },
+  helperText: { color: colors.inkSoft, fontSize: 12, fontWeight: '500', marginBottom: 12, marginTop: -4 },
 
   label: { color: colors.ink, fontSize: 14, fontWeight: '800', marginBottom: 10, letterSpacing: -0.3 },
   input: {
@@ -525,4 +594,5 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   nextBtnText: { color: colors.inkOnDark, fontSize: 15, fontWeight: '800' },
+  nextBtnDisabled: { opacity: 0.7 },
 });
