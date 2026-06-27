@@ -49,14 +49,15 @@ export default function LoginScreen() {
       {/* Status Bar completely hidden to match Registration UI */}
       <StatusBar hidden />
       
-      <KeyboardAvoidingView 
-        style={styles.container} 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContainer}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           {/* Header Section */}
           <View style={styles.headerSection}>
@@ -168,7 +169,7 @@ const styles = StyleSheet.create({
   scrollContainer: {
     paddingHorizontal: 24,
     paddingTop: 30, // Matches Registration screen
-    paddingBottom: 40,
+    paddingBottom: 80,
   },
   headerSection: {
     marginBottom: 40,

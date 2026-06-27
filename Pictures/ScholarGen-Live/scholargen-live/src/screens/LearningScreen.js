@@ -9,16 +9,38 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StatusBar
+  StatusBar,
+  ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import api from '../services/api';
 
 export default function LearningProfileScreen() {
   const navigation = useNavigation();
   const [activeGoal, setActiveGoal] = useState('JAMB');
+  const [currentScore, setCurrentScore] = useState('');
+  const [targetScore, setTargetScore] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const goals = ['JAMB', 'WAEC', 'NECO', 'IELTS', 'ICAN', 'General'];
+
+  const handleComplete = async () => {
+    setSubmitting(true);
+    // Best-effort: persist the learning profile that powers tutor matching.
+    try {
+      await api.students.createLearningProfile({
+        goal: activeGoal,
+        ...(currentScore ? { current_score: Number(currentScore) } : {}),
+        ...(targetScore ? { target_score: Number(targetScore) } : {}),
+        weak_subjects: ['Mathematics', 'Physics'],
+      });
+    } catch {
+      // non-fatal — continue to the dashboard
+    }
+    setSubmitting(false);
+    navigation.navigate('Dashboard');
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -53,7 +75,7 @@ export default function LearningProfileScreen() {
             
             {/* Primary Goal Selection */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>What's your primary goal?</Text>
+              <Text style={styles.label}>What&apos;s your primary goal?</Text>
               <View style={styles.pillContainer}>
                 {goals.map((goal) => (
                   <TouchableOpacity
@@ -88,6 +110,8 @@ export default function LearningProfileScreen() {
                     placeholder="e.g. 180"
                     placeholderTextColor="#8B9A8B"
                     keyboardType="numeric"
+                    value={currentScore}
+                    onChangeText={setCurrentScore}
                   />
                 </View>
               </View>
@@ -100,6 +124,8 @@ export default function LearningProfileScreen() {
                     placeholder="e.g. 300"
                     placeholderTextColor="#8B9A8B"
                     keyboardType="numeric"
+                    value={targetScore}
+                    onChangeText={setTargetScore}
                   />
                 </View>
               </View>
@@ -139,8 +165,17 @@ export default function LearningProfileScreen() {
 
         {/* Fixed Bottom Button */}
         <View style={styles.bottomSection}>
-          <TouchableOpacity style={styles.completeButton} activeOpacity={0.8} onPress={() => navigation.navigate('Dashboard')}>
-            <Text style={styles.completeButtonText}>Complete Setup</Text>
+          <TouchableOpacity
+            style={[styles.completeButton, submitting && styles.completeButtonDisabled]}
+            activeOpacity={0.8}
+            onPress={handleComplete}
+            disabled={submitting}
+          >
+            {submitting ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.completeButtonText}>Complete Setup</Text>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -307,11 +342,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF', // Pure white
   },
   completeButton: {
-    backgroundColor: '#52BE23', 
+    backgroundColor: '#52BE23',
     height: 56,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  completeButtonDisabled: {
+    opacity: 0.7,
   },
   completeButtonText: {
     color: '#FFFFFF',

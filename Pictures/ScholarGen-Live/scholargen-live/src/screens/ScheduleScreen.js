@@ -3,11 +3,12 @@ import {
   StyleSheet,
   Text,
   View,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   StatusBar,
-  Platform
+  Platform,
+  Linking,
+  Alert
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -184,7 +185,20 @@ export default function ScheduleScreen() {
                         <Text style={styles.durationText}>
                           <Feather name="clock" size={12} /> 2h
                         </Text>
-                        <TouchableOpacity style={styles.joinBtn} activeOpacity={0.8}>
+                        <TouchableOpacity
+                          style={styles.joinBtn}
+                          activeOpacity={0.8}
+                          onPress={() => {
+                            if (session.meetLink) {
+                              Linking.openURL(session.meetLink).catch(() => {});
+                            } else {
+                              Alert.alert(
+                                'Link not ready',
+                                'Your Google Meet link will appear here once the session is confirmed.',
+                              );
+                            }
+                          }}
+                        >
                           <Text style={styles.joinBtnText}>Join Class</Text>
                         </TouchableOpacity>
                       </View>

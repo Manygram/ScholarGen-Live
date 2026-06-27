@@ -1,10 +1,14 @@
 // Authentication / session state for ScholarGen Live.
 //
-// Holds the signed-in user, bootstraps the session from the cookie on launch
-// (GET /users/me), and exposes login / register / logout. It also mirrors the
-// authenticated user's name & email into the AppContext profiles so the
-// existing dashboards/profile screens display real data without each screen
-// needing to know about the network layer.
+// Holds the signed-in user and keeps it resilient:
+//  • On launch it restores the last user from storage (so the session survives
+//    reloads) and then revalidates against /users/me in the background.
+//  • login() trusts the /auth/login response and only *enriches* it with
+//    /users/me — a blocked or failed /users/me never wipes a valid login.
+//    (The API sets a SameSite=Lax cookie, which some cross-site web contexts
+//    won't replay on XHR; persisting the user keeps the app usable there.)
+//  • It mirrors the authenticated identity into the AppContext profiles so the
+//    dashboards/profile screens show real data.
 import React, {
   createContext,
   useCallback,
@@ -14,9 +18,11 @@ import React, {
   useState,
 } from 'react';
 import api from '../services/api';
+import { getItem, removeItem, setItem } from '../services/storage';
 import { useApp } from './AppContext';
 
 const AuthContext = createContext(null);
+const STORAGE_KEY = 'sg_auth_user';
 
 export function AuthProvider({ children }) {
   const { updateStudentProfile, updateTutorProfile } = useApp();
@@ -38,51 +44,84 @@ export function AuthProvider({ children }) {
     [updateStudentProfile, updateTutorProfile],
   );
 
-  // Load the current session user (if the cookie is valid).
-  const refresh = useCallback(async () => {
-    try {
-      const data = await api.users.me();
-      setUser(data?.user || null);
-      syncProfile(data?.user, data?.profile);
-      return data;
-    } catch {
-      setUser(null);
-      return null;
-    }
-  }, [syncProfile]);
+  // Persist + set the user in one step.
+  const applyUser = useCallback((u) => {
+    setUser(u || null);
+    if (u) setItem(STORAGE_KEY, u);
+    else removeItem(STORAGE_KEY);
+  }, []);
 
+  // Restore the cached user, then revalidate in the background.
   useEffect(() => {
     let active = true;
     (async () => {
-      await refresh();
+      const cached = await getItem(STORAGE_KEY);
+      if (active && cached) {
+        setUser(cached);
+        syncProfile(cached);
+      }
+      try {
+        const data = await api.users.me();
+        if (active && data?.user) {
+          applyUser(data.user);
+          syncProfile(data.user, data.profile);
+        }
+      } catch {
+        // Keep the cached user if the session check is blocked/offline.
+      }
       if (active) setBootstrapping(false);
     })();
     return () => {
       active = false;
     };
-  }, [refresh]);
+  }, [applyUser, syncProfile]);
 
   const login = useCallback(
     async (email, password) => {
+      // /auth/login returns the user and sets the session cookie.
       const loggedIn = await api.auth.login({ email, password });
-      setUser(loggedIn || null);
-      // Pull the full profile (role-specific) now that the cookie is set.
-      const me = await refresh();
-      return me?.user || loggedIn;
+      let finalUser = loggedIn;
+      // Best-effort enrichment with the full profile; never wipes the login.
+      try {
+        const me = await api.users.me();
+        if (me?.user) {
+          finalUser = me.user;
+          syncProfile(me.user, me.profile);
+        } else {
+          syncProfile(loggedIn);
+        }
+      } catch {
+        syncProfile(loggedIn);
+      }
+      applyUser(finalUser);
+      return finalUser;
     },
-    [refresh],
+    [applyUser, syncProfile],
   );
 
-  // Register does not create a session by itself; the caller can log in after.
+  // Register does not create a session by itself; the caller logs in after.
   const register = useCallback((payload) => api.auth.register(payload), []);
 
   const logout = useCallback(async () => {
     try {
       await api.auth.logout();
     } finally {
-      setUser(null);
+      applyUser(null);
     }
-  }, []);
+  }, [applyUser]);
+
+  const refresh = useCallback(async () => {
+    try {
+      const data = await api.users.me();
+      if (data?.user) {
+        applyUser(data.user);
+        syncProfile(data.user, data.profile);
+      }
+      return data;
+    } catch {
+      return null;
+    }
+  }, [applyUser, syncProfile]);
 
   const value = useMemo(
     () => ({

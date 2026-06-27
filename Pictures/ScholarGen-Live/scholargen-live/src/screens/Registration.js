@@ -15,8 +15,11 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { AvatarPicker } from '../components/Avatar';
+import Dropdown from '../components/Dropdown';
+import { NIGERIAN_STATES } from '../data/nigeria';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 
 export default function RegistrationScreen() {
   const navigation = useNavigation();
@@ -27,6 +30,8 @@ export default function RegistrationScreen() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [stateValue, setStateValue] = useState('');
+  const [city, setCity] = useState('');
   const [avatar, setAvatar] = useState(studentProfile.avatar);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -48,6 +53,17 @@ export default function RegistrationScreen() {
       });
       // Registration does not start a session, so log in to set the cookie.
       await login(email.trim(), password);
+      // Best-effort: persist the rest of the profile to the API.
+      try {
+        await api.users.updateProfile({
+          full_name: name.trim(),
+          ...(phone.trim() ? { phone_number: phone.trim() } : {}),
+          ...(stateValue ? { state: stateValue } : {}),
+          ...(city.trim() ? { city: city.trim() } : {}),
+        });
+      } catch {
+        // non-fatal — continue onboarding
+      }
       updateStudentProfile({ name: name.trim(), email: email.trim(), avatar });
       navigation.navigate('Learning');
     } catch (e) {
@@ -62,14 +78,15 @@ export default function RegistrationScreen() {
       {/* Status Bar completely hidden as requested */}
       <StatusBar hidden />
       
-      <KeyboardAvoidingView 
-        style={styles.container} 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContainer}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           {/* Header & Progress Section */}
           <View style={styles.headerSection}>
@@ -163,14 +180,13 @@ export default function RegistrationScreen() {
             <View style={styles.rowGroup}>
               <View style={[styles.inputGroup, styles.halfWidth]}>
                 <Text style={styles.label}>State</Text>
-                <View style={styles.inputContainer}>
-                  <Feather name="map" size={18} color="#34931A" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Lagos"
-                    placeholderTextColor="#8B9A8B"
-                  />
-                </View>
+                <Dropdown
+                  value={stateValue}
+                  options={NIGERIAN_STATES}
+                  onChange={setStateValue}
+                  placeholder="Select state"
+                  leftIcon="map"
+                />
               </View>
 
               <View style={[styles.inputGroup, styles.halfWidth]}>
@@ -181,9 +197,19 @@ export default function RegistrationScreen() {
                     style={styles.input}
                     placeholder="Ikeja"
                     placeholderTextColor="#8B9A8B"
+                    value={city}
+                    onChangeText={setCity}
                   />
                 </View>
               </View>
+            </View>
+
+            {/* Already have an account */}
+            <View style={styles.signinRedirect}>
+              <Text style={styles.redirectText}>Already have an account? </Text>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('Login')}>
+                <Text style={styles.redirectLink}>Log in</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </ScrollView>
@@ -225,7 +251,7 @@ const styles = StyleSheet.create({
   scrollContainer: {
     paddingHorizontal: 24,
     paddingTop: 30, // Slightly increased top padding since status bar is hidden
-    paddingBottom: 40,
+    paddingBottom: 80, // Extra room so the keyboard never covers the lower fields
   },
   headerSection: {
     marginBottom: 24,
@@ -339,6 +365,22 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.7,
+  },
+  signinRedirect: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  redirectText: {
+    color: '#6B7A63',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  redirectLink: {
+    color: '#34931A',
+    fontSize: 14,
+    fontWeight: '700',
   },
   continueButton: {
     backgroundColor: '#52BE23',
